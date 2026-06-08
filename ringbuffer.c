@@ -1,4 +1,5 @@
 #include "ringbuffer.h"
+#include <string.h>
 
 /**
  * @file
@@ -27,11 +28,55 @@ void ring_buffer_queue(ring_buffer_t *buffer, char data) {
 }
 
 void ring_buffer_queue_arr(ring_buffer_t *buffer, const char *data, ring_buffer_size_t size) {
-  /* Add bytes; one by one */
-  ring_buffer_size_t i;
-  for(i = 0; i < size; i++) {
-    ring_buffer_queue(buffer, data[i]);
+  if(size == 0) {
+    return;
   }
+
+  ring_buffer_size_t mask = RING_BUFFER_MASK(buffer);
+  ring_buffer_size_t buf_size = mask + 1;
+  ring_buffer_size_t capacity = mask;
+  ring_buffer_size_t head = buffer->head_index;
+  ring_buffer_size_t tail = buffer->tail_index;
+  ring_buffer_size_t original_size = size;
+
+  if(size >= capacity) {
+    ring_buffer_size_t head_index = ((head + original_size) & mask);
+    ring_buffer_size_t tail_index = ((head_index + 1) & mask);
+    ring_buffer_size_t first_chunk = buf_size - tail_index;
+
+    data += (original_size - capacity);
+    if(first_chunk > capacity) {
+      first_chunk = capacity;
+    }
+
+    memcpy(buffer->buffer + tail_index, data, first_chunk);
+    if(first_chunk < capacity) {
+      memcpy(buffer->buffer, data + first_chunk, capacity - first_chunk);
+    }
+
+    buffer->head_index = head_index;
+    buffer->tail_index = tail_index;
+    return;
+  }
+
+  ring_buffer_size_t num_items = ((head - tail) & mask);
+  ring_buffer_size_t free_space = capacity - num_items;
+  if(size > free_space) {
+    tail = ((tail + size - free_space) & mask);
+  }
+
+  ring_buffer_size_t first_chunk = buf_size - head;
+  if(first_chunk > size) {
+    first_chunk = size;
+  }
+
+  memcpy(buffer->buffer + head, data, first_chunk);
+  if(first_chunk < size) {
+    memcpy(buffer->buffer, data + first_chunk, size - first_chunk);
+  }
+
+  buffer->head_index = ((head + size) & mask);
+  buffer->tail_index = tail;
 }
 
 uint8_t ring_buffer_dequeue(ring_buffer_t *buffer, char *data) {
@@ -46,18 +91,57 @@ uint8_t ring_buffer_dequeue(ring_buffer_t *buffer, char *data) {
 }
 
 ring_buffer_size_t ring_buffer_dequeue_arr(ring_buffer_t *buffer, char *data, ring_buffer_size_t len) {
+  ring_buffer_size_t mask = RING_BUFFER_MASK(buffer);
+  ring_buffer_size_t tail = buffer->tail_index;
+  ring_buffer_size_t count = ((buffer->head_index - tail) & mask);
+
+  if((count == 0) || (len == 0)) {
+    /* No items */
+    return 0;
+  }
+
+  if(len < count) {
+    count = len;
+  }
+
+  ring_buffer_size_t buf_size = mask + 1;
+  ring_buffer_size_t first_chunk = buf_size - tail;
+  if(first_chunk > count) {
+    first_chunk = count;
+  }
+
+  memcpy(data, buffer->buffer + tail, first_chunk);
+  if(first_chunk < count) {
+    memcpy(data + first_chunk, buffer->buffer, count - first_chunk);
+  }
+
+  buffer->tail_index = ((tail + count) & mask);
+  return count;
+}
+
+uint8_t ring_buffer_discard(ring_buffer_t *buffer) {
   if(ring_buffer_is_empty(buffer)) {
     /* No items */
     return 0;
   }
 
-  char *data_ptr = data;
-  ring_buffer_size_t cnt = 0;
-  while((cnt < len) && ring_buffer_dequeue(buffer, data_ptr)) {
-    cnt++;
-    data_ptr++;
+  buffer->tail_index = ((buffer->tail_index + 1) & RING_BUFFER_MASK(buffer));
+  return 1;
+}
+
+ring_buffer_size_t ring_buffer_discard_arr(ring_buffer_t *buffer, ring_buffer_size_t len) {
+  ring_buffer_size_t count = ring_buffer_num_items(buffer);
+  if((count == 0) || (len == 0)) {
+    /* No items */
+    return 0;
   }
-  return cnt;
+
+  if(len < count) {
+    count = len;
+  }
+
+  buffer->tail_index = ((buffer->tail_index + count) & RING_BUFFER_MASK(buffer));
+  return count;
 }
 
 uint8_t ring_buffer_peek(ring_buffer_t *buffer, char *data, ring_buffer_size_t index) {
@@ -72,7 +156,34 @@ uint8_t ring_buffer_peek(ring_buffer_t *buffer, char *data, ring_buffer_size_t i
   return 1;
 }
 
+ring_buffer_size_t ring_buffer_peek_arr(ring_buffer_t *buffer, char *data, ring_buffer_size_t len) {
+  ring_buffer_size_t mask = RING_BUFFER_MASK(buffer);
+  ring_buffer_size_t tail = buffer->tail_index;
+  ring_buffer_size_t count = ((buffer->head_index - tail) & mask);
+
+  if((count == 0) || (len == 0)) {
+    /* No items */
+    return 0;
+  }
+
+  if(len < count) {
+    count = len;
+  }
+
+  ring_buffer_size_t buf_size = mask + 1;
+  ring_buffer_size_t first_chunk = buf_size - tail;
+  if(first_chunk > count) {
+    first_chunk = count;
+  }
+
+  memcpy(data, buffer->buffer + tail, first_chunk);
+  if(first_chunk < count) {
+    memcpy(data + first_chunk, buffer->buffer, count - first_chunk);
+  }
+
+  return count;
+}
+
 extern inline uint8_t ring_buffer_is_empty(ring_buffer_t *buffer);
 extern inline uint8_t ring_buffer_is_full(ring_buffer_t *buffer);
 extern inline ring_buffer_size_t ring_buffer_num_items(ring_buffer_t *buffer);
-
