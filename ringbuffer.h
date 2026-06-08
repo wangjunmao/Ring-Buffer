@@ -100,6 +100,22 @@ uint8_t ring_buffer_dequeue(ring_buffer_t *buffer, char *data);
  * @return The number of bytes returned.
  */
 ring_buffer_size_t ring_buffer_dequeue_arr(ring_buffer_t *buffer, char *data, ring_buffer_size_t len);
+
+/**
+ * Discards the oldest byte in a ring buffer.
+ * @param buffer The buffer from which the data should be discarded.
+ * @return 1 if data was discarded; 0 otherwise.
+ */
+uint8_t ring_buffer_discard(ring_buffer_t *buffer);
+
+/**
+ * Discards the <em>len</em> oldest bytes in a ring buffer.
+ * @param buffer The buffer from which the data should be discarded.
+ * @param len The maximum number of bytes to discard.
+ * @return The number of bytes discarded.
+ */
+ring_buffer_size_t ring_buffer_discard_arr(ring_buffer_t *buffer, ring_buffer_size_t len);
+
 /**
  * Peeks a ring buffer, i.e. returns an element without removing it.
  * @param buffer The buffer from which the data should be returned.
@@ -108,6 +124,15 @@ ring_buffer_size_t ring_buffer_dequeue_arr(ring_buffer_t *buffer, char *data, ri
  * @return 1 if data was returned; 0 otherwise.
  */
 uint8_t ring_buffer_peek(ring_buffer_t *buffer, char *data, ring_buffer_size_t index);
+
+/**
+ * Returns the <em>len</em> oldest bytes in a ring buffer without removing them.
+ * @param buffer The buffer from which the data should be returned.
+ * @param data A pointer to the array at which the data should be placed.
+ * @param len The maximum number of bytes to return.
+ * @return The number of bytes returned.
+ */
+ring_buffer_size_t ring_buffer_peek_arr(ring_buffer_t *buffer, char *data, ring_buffer_size_t len);
 
 
 /**
