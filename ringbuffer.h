@@ -54,9 +54,9 @@ struct ring_buffer_t {
   /** Buffer mask. */
   ring_buffer_size_t buffer_mask;
   /** Index of tail. */
-  ring_buffer_size_t tail_index;
+  volatile ring_buffer_size_t tail_index;
   /** Index of head. */
-  ring_buffer_size_t head_index;
+  volatile ring_buffer_size_t head_index;
 };
 
 /**
@@ -83,6 +83,19 @@ void ring_buffer_queue(ring_buffer_t *buffer, char data);
  * @param size The size of the array.
  */
 void ring_buffer_queue_arr(ring_buffer_t *buffer, const char *data, ring_buffer_size_t size);
+
+/**
+ * Adds as many bytes as possible without overwriting unread data.
+ * This operation is safe for a single interrupt-context producer and a
+ * single task-context consumer: the producer modifies only head_index and
+ * the consumer modifies only tail_index.
+ * @param buffer The buffer in which the data should be placed.
+ * @param data A pointer to the array of bytes to place in the queue.
+ * @param size The size of the array.
+ * @return The number of bytes queued. A value smaller than size indicates
+ *         that the remaining new bytes were dropped.
+ */
+ring_buffer_size_t ring_buffer_queue_arr_safe(ring_buffer_t *buffer, const char *data, ring_buffer_size_t size);
 
 /**
  * Returns the oldest byte in a ring buffer.
