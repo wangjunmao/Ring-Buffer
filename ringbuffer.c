@@ -79,6 +79,49 @@ void ring_buffer_queue_arr(ring_buffer_t *buffer, const char *data, ring_buffer_
   buffer->tail_index = tail;
 }
 
+ring_buffer_size_t ring_buffer_queue_arr_safe(ring_buffer_t *buffer,
+                                              const char *data,
+                                              ring_buffer_size_t size) {
+  ring_buffer_size_t mask;
+  ring_buffer_size_t buf_size;
+  ring_buffer_size_t head;
+  ring_buffer_size_t tail;
+  ring_buffer_size_t free_space;
+  ring_buffer_size_t first_chunk;
+
+  if(size == 0) {
+    return 0;
+  }
+
+  mask = RING_BUFFER_MASK(buffer);
+  buf_size = mask + 1;
+  head = buffer->head_index;
+  tail = buffer->tail_index;
+  free_space = mask - ((head - tail) & mask);
+
+  if(size > free_space) {
+    size = free_space;
+  }
+  if(size == 0) {
+    return 0;
+  }
+
+  first_chunk = buf_size - head;
+  if(first_chunk > size) {
+    first_chunk = size;
+  }
+
+  memcpy(buffer->buffer + head, data, first_chunk);
+  if(first_chunk < size) {
+    memcpy(buffer->buffer, data + first_chunk, size - first_chunk);
+  }
+
+  /* Publish the new data only after both copies are complete. */
+  __asm volatile ("" ::: "memory");
+  buffer->head_index = ((head + size) & mask);
+  return size;
+}
+
 uint8_t ring_buffer_dequeue(ring_buffer_t *buffer, char *data) {
   if(ring_buffer_is_empty(buffer)) {
     /* No items */
