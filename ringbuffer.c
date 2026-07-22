@@ -227,6 +227,17 @@ ring_buffer_size_t ring_buffer_peek_arr(ring_buffer_t *buffer, char *data, ring_
   return count;
 }
 
+uint8_t ring_buffer_cmp(ring_buffer_t *buffer, uint8_t data, ring_buffer_size_t index) {
+  if(index >= ring_buffer_num_items(buffer)) {
+    /* No items at index */
+    return 0U;
+  }
+
+  /* Add index to pointer */
+  ring_buffer_size_t data_index = ((buffer->tail_index + index) & RING_BUFFER_MASK(buffer));
+  return ((uint8_t)buffer->buffer[data_index] == data) ? 1U : 0U;
+}
+
 extern inline uint8_t ring_buffer_is_empty(ring_buffer_t *buffer);
 extern inline uint8_t ring_buffer_is_full(ring_buffer_t *buffer);
 extern inline ring_buffer_size_t ring_buffer_num_items(ring_buffer_t *buffer);
