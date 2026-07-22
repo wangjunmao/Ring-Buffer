@@ -147,6 +147,14 @@ uint8_t ring_buffer_peek(ring_buffer_t *buffer, char *data, ring_buffer_size_t i
  */
 ring_buffer_size_t ring_buffer_peek_arr(ring_buffer_t *buffer, char *data, ring_buffer_size_t len);
 
+/**
+ * Compares a byte in a ring buffer without removing it.
+ * @param buffer The buffer containing the byte to compare.
+ * @param data The byte value to compare, which may be a variable or constant.
+ * @param index The index of the byte to compare.
+ * @return 1U if the byte exists and is equal to data; 0U otherwise.
+ */
+uint8_t ring_buffer_cmp(ring_buffer_t *buffer, uint8_t data, ring_buffer_size_t index);
 
 /**
  * Returns whether a ring buffer is empty.
